@@ -1,3 +1,6 @@
 ultralytics
 lap
-faiss-cpu
+qdrant-client
+onnxruntime-gpu # you can also use cpu version
+numpy
+
