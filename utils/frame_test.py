@@ -1,8 +1,23 @@
 import cv2
 import numpy as np
+import onnxruntime as ort
 
-def get_embedding():
-    return np.random.rand(128).astype('float32')
+session = ort.InferenceSession(r"E:\keyur\python\project\cctv face recognition\arc.onnx")
+
+def get_embedding(face_img):
+    face = cv2.resize(face_img, (112, 112))
+    face = cv2.cvtColor(face, cv2.COLOR_BGR2RGB)
+
+    # face = np.transpose(face, (2, 0, 1))
+    face = np.expand_dims(face, axis=0).astype(np.float32)
+
+    input_name = session.get_inputs()[0].name
+    embedding = session.run(None, {input_name: face})[0][0]
+
+    # normalize
+    embedding = embedding / np.linalg.norm(embedding)
+
+    return embedding
 
 def blur_score(img):
     gray  = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -41,28 +56,28 @@ def is_duplicate(new_emb, stored_embeddings, threshold=0.6):
 
     return False
 def filter_frame(candidates,yaw,pitch,face_crop,roll):### many  params optimize it!!!!
-    if abs(yaw) <= 70 and abs(pitch) <= 30:
+    if abs(yaw) <= 40 and abs(pitch) <= 25:
 
         blur = blur_score(face_crop)
 
-        if blur > 120:
+        if blur > 100:
 
             aligned = align_face(face_crop,roll)
             aligned = cv2.resize(aligned, (112,112))
 
-            emb = get_embedding()
-            emb = emb / np.linalg.norm(emb)
 
-            candidates.append((emb, blur, aligned))
+            candidates.append((blur, aligned))
     return candidates
 def select_candidates(candidates):
-    candidates = sorted(candidates, key=lambda x: x[1], reverse=True)
+    candidates = sorted(candidates, key=lambda x: float(x[0]), reverse=True)
     selected = []
     selected_embs = []
-    for emb,blur,img in candidates:
-        if len(selected)>10:
+    for blur,img in candidates:
+        if len(selected)>=10:
             break
-        if not is_duplicate(emb,selected_embs,threshold = 0.9):
+        emb = get_embedding(face_img=img)
+        # emb = emb / np.linalg.norm(emb)
+        if  not is_duplicate(emb,selected_embs,threshold = 0.95):
             selected.append(img)
             selected_embs.append(emb)
     return selected,selected_embs

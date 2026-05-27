@@ -1,2 +1,6 @@
 env
 __pycache__
+*.png
+qdrant_data
+label_pkl
+arc.onnx
